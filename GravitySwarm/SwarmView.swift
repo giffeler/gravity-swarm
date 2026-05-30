@@ -1,0 +1,79 @@
+import SpriteKit
+import SwiftUI
+import WatchKit
+
+struct SwarmView: View {
+    @Environment(\.scenePhase) private var scenePhase
+    @StateObject private var motionController = MotionController()
+    @State private var scene = SwarmScene()
+    @State private var crownValue = Double(PerformanceConfig.defaultSwarmCount)
+
+    var body: some View {
+        GeometryReader { proxy in
+            let renderSize = fullScreenSize(fallback: proxy.size)
+
+            SpriteView(
+                scene: scene,
+                isPaused: false,
+                preferredFramesPerSecond: PerformanceConfig.preferredFramesPerSecond
+            )
+                .frame(width: renderSize.width, height: renderSize.height)
+                .ignoresSafeArea()
+                .persistentSystemOverlays(.hidden)
+                .background(Color.black)
+                .focusable(true)
+                .digitalCrownRotation(
+                    $crownValue,
+                    from: Double(PerformanceConfig.minimumSwarmCount),
+                    through: Double(PerformanceConfig.maximumSwarmCount),
+                    by: PerformanceConfig.crownStep,
+                    sensitivity: .medium,
+                    isContinuous: false,
+                    isHapticFeedbackEnabled: true
+                )
+                .onAppear {
+                    configureScene(size: renderSize)
+                    scene.setSimulationPaused(false)
+                    motionController.start()
+                }
+                .onDisappear {
+                    scene.setSimulationPaused(true)
+                    motionController.stop()
+                }
+                .onChange(of: crownValue) { _, newValue in
+                    scene.setDesiredSwarmCount(Int(newValue.rounded()))
+                }
+                .onChange(of: proxy.size) { _, newSize in
+                    configureScene(size: fullScreenSize(fallback: newSize))
+                }
+                .onChange(of: scenePhase) { _, newPhase in
+                    switch newPhase {
+                    case .active:
+                        configureScene(size: renderSize)
+                        scene.setSimulationPaused(false)
+                        motionController.start()
+                    default:
+                        scene.setSimulationPaused(true)
+                        motionController.stop()
+                    }
+                }
+        }
+    }
+
+    private func configureScene(size: CGSize) {
+        scene.configure(size: size, motionController: motionController)
+        scene.setDesiredSwarmCount(Int(crownValue.rounded()))
+    }
+
+    private func fullScreenSize(fallback: CGSize) -> CGSize {
+        let screen = WKInterfaceDevice.current().screenBounds.size
+        return CGSize(
+            width: max(fallback.width, screen.width),
+            height: max(fallback.height, screen.height)
+        )
+    }
+}
+
+#Preview {
+    SwarmView()
+}

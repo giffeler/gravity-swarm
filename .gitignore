@@ -1,0 +1,47 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Xcode
+DerivedData/
+build/
+*.xcuserstate
+*.xcscmblueprint
+*.moved-aside
+*.xccheckout
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# CocoaPods / Carthage / third-party build output
+Pods/
+Carthage/Build/
+
+# Local signing and provisioning
+Signing.local.xcconfig
+*.mobileprovision
+*.provisionprofile
+*.cer
+*.p12
+
+# App archives and symbol uploads
+*.xcarchive
+*.dSYM
+*.dSYM.zip
+*.ipa
+
+# Logs and temporary files
+*.log
+*.tmp
+*.swp
+*.swo
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
