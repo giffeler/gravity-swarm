@@ -1,8 +1,11 @@
 import SpriteKit
 import SwiftUI
 import WatchKit
+import OSLog
 
 struct SwarmView: View {
+    private let logger = Logger(subsystem: "com.giffeler.gravityswarm", category: "SwarmView")
+
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var motionController = MotionController()
     @State private var scene = SwarmScene()
@@ -22,6 +25,10 @@ struct SwarmView: View {
                 .persistentSystemOverlays(.hidden)
                 .background(Color.black)
                 .focusable(true)
+                .onTapGesture(count: 2) {
+                    motionController.recalibrate()
+                    WKInterfaceDevice.current().play(.click)
+                }
                 .digitalCrownRotation(
                     $crownValue,
                     from: Double(PerformanceConfig.minimumSwarmCount),
@@ -35,13 +42,16 @@ struct SwarmView: View {
                     configureScene(size: renderSize)
                     scene.setSimulationPaused(false)
                     motionController.start()
+                    logger.info("App appeared with render size \(renderSize.width, privacy: .public)x\(renderSize.height, privacy: .public)")
                 }
                 .onDisappear {
                     scene.setSimulationPaused(true)
                     motionController.stop()
                 }
                 .onChange(of: crownValue) { _, newValue in
-                    scene.setDesiredSwarmCount(Int(newValue.rounded()))
+                    let count = Int(newValue.rounded())
+                    scene.setDesiredSwarmCount(count)
+                    logger.info("Swarm count set to \(count, privacy: .public)")
                 }
                 .onChange(of: proxy.size) { _, newSize in
                     configureScene(size: fullScreenSize(fallback: newSize))
