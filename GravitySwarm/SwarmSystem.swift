@@ -151,19 +151,21 @@ final class SwarmSystem {
     }
 
     private func updateLeader(control: CGVector, boundary: RoundedDisplayBoundary, timeStep: CGFloat) {
-        leader.velocity.dx += control.dx * PerformanceConfig.leaderAcceleration * timeStep
-        leader.velocity.dy += control.dy * PerformanceConfig.leaderAcceleration * timeStep
-        leader.velocity = limited(leader.velocity, maxSpeed: PerformanceConfig.leaderMaxSpeed)
-        leader.velocity.dx *= PerformanceConfig.leaderVelocityDamping
-        leader.velocity.dy *= PerformanceConfig.leaderVelocityDamping
+        var leaderFish = leader
+        leaderFish.velocity.dx += control.dx * PerformanceConfig.leaderAcceleration * timeStep
+        leaderFish.velocity.dy += control.dy * PerformanceConfig.leaderAcceleration * timeStep
+        leaderFish.velocity = limited(leaderFish.velocity, maxSpeed: PerformanceConfig.leaderMaxSpeed)
+        leaderFish.velocity.dx *= PerformanceConfig.leaderVelocityDamping
+        leaderFish.velocity.dy *= PerformanceConfig.leaderVelocityDamping
 
-        leader.position.x += leader.velocity.dx * timeStep
-        leader.position.y += leader.velocity.dy * timeStep
+        leaderFish.position.x += leaderFish.velocity.dx * timeStep
+        leaderFish.position.y += leaderFish.velocity.dy * timeStep
         boundary.resolve(
-            position: &leader.position,
-            velocity: &leader.velocity,
+            position: &leaderFish.position,
+            velocity: &leaderFish.velocity,
             radius: PerformanceConfig.leaderRadius
         )
+        leader = leaderFish
     }
 
     private func updateSwarm(boundary: RoundedDisplayBoundary, timeStep: CGFloat) {
