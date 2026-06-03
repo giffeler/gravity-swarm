@@ -4,11 +4,11 @@ Gravity Swarm is a native watchOS prototype for Apple Watch Ultra. The app runs 
 
 ## Requirements
 
-- Xcode 26.4 or newer
-- watchOS 26.4 or newer simulator or paired Apple Watch
+- Xcode 26.5 or newer
+- watchOS 26.5 or newer simulator or paired Apple Watch
 - Swift / SwiftUI / SpriteKit / Core Motion
 
-The deployment target is watchOS 26.4.
+The deployment target is watchOS 26.5.
 
 ## Concept
 
