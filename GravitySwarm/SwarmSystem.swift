@@ -53,10 +53,11 @@ struct RoundedDisplayBoundary {
         }
     }
 
-    func outwardNormalIfNearEdge(point: CGPoint, radius: CGFloat, threshold: CGFloat) -> CGVector? {
+    func edgeInfluence(point: CGPoint, radius: CGFloat, threshold: CGFloat) -> (normal: CGVector, strength: CGFloat)? {
         let distance = signedDistance(from: point, radius: radius)
         guard distance >= -threshold else { return nil }
-        return outwardNormal(at: point, radius: radius)
+        let strength = min(max((threshold + distance) / threshold, 0), 1)
+        return (outwardNormal(at: point, radius: radius), strength)
     }
 
     private func signedDistance(from point: CGPoint, radius: CGFloat) -> CGFloat {
@@ -116,6 +117,7 @@ final class SwarmSystem {
     private(set) var leader = Fish(position: .zero, velocity: .zero, wanderPhase: 0)
     private(set) var swarm: [Fish] = []
     private(set) var activeSwarmCount = PerformanceConfig.defaultSwarmCount
+    private var smoothedLeaderAcceleration = CGVector.zero
 
     func reset(in bounds: CGSize) {
         let boundary = RoundedDisplayBoundary(size: bounds)
@@ -124,6 +126,7 @@ final class SwarmSystem {
             velocity: .zero,
             wanderPhase: 0
         )
+        smoothedLeaderAcceleration = .zero
 
         swarm.removeAll(keepingCapacity: true)
         swarm.reserveCapacity(PerformanceConfig.maximumSwarmCount)
@@ -158,33 +161,48 @@ final class SwarmSystem {
 
     private func updateLeader(control: CGVector, boundary: RoundedDisplayBoundary, timeStep: CGFloat) {
         var leaderFish = leader
-        var desiredVelocity = desiredLeaderVelocity(for: control)
+        var acceleration = CGVector(
+            dx: control.dx * PerformanceConfig.leaderAcceleration,
+            dy: control.dy * PerformanceConfig.leaderAcceleration
+        )
+        var shouldApplyAccelerationImmediately = false
 
-        if let outward = boundary.outwardNormalIfNearEdge(
+        if let edge = boundary.edgeInfluence(
             point: leaderFish.position,
             radius: PerformanceConfig.leaderRadius,
             threshold: PerformanceConfig.leaderBoundarySoftZone
         ) {
-            let desiredOutward = dot(desiredVelocity, outward)
-            if desiredOutward > 0 {
-                desiredVelocity.dx -= outward.dx * desiredOutward
-                desiredVelocity.dy -= outward.dy * desiredOutward
+            shouldApplyAccelerationImmediately = true
+            let accelerationOutward = dot(acceleration, edge.normal)
+            if accelerationOutward > 0 {
+                acceleration.dx -= edge.normal.dx * accelerationOutward * edge.strength
+                acceleration.dy -= edge.normal.dy * accelerationOutward * edge.strength
             }
 
-            let currentOutward = dot(leaderFish.velocity, outward)
+            let smoothedOutward = dot(smoothedLeaderAcceleration, edge.normal)
+            if smoothedOutward > 0 {
+                smoothedLeaderAcceleration.dx -= edge.normal.dx * smoothedOutward
+                smoothedLeaderAcceleration.dy -= edge.normal.dy * smoothedOutward
+            }
+
+            let currentOutward = dot(leaderFish.velocity, edge.normal)
             if currentOutward > 0 {
-                leaderFish.velocity.dx -= outward.dx * currentOutward * PerformanceConfig.leaderBoundaryOutwardVelocityDamping
-                leaderFish.velocity.dy -= outward.dy * currentOutward * PerformanceConfig.leaderBoundaryOutwardVelocityDamping
+                let damping = PerformanceConfig.leaderBoundaryOutwardVelocityDamping * edge.strength
+                leaderFish.velocity.dx -= edge.normal.dx * currentOutward * damping
+                leaderFish.velocity.dy -= edge.normal.dy * currentOutward * damping
             }
         }
 
-        let steering = CGVector(
-            dx: (desiredVelocity.dx - leaderFish.velocity.dx) * PerformanceConfig.leaderSteeringResponse,
-            dy: (desiredVelocity.dy - leaderFish.velocity.dy) * PerformanceConfig.leaderSteeringResponse
-        )
-        let acceleration = limited(steering, maxSpeed: PerformanceConfig.leaderMaxSteeringAcceleration)
-        leaderFish.velocity.dx += acceleration.dx * timeStep
-        leaderFish.velocity.dy += acceleration.dy * timeStep
+        if shouldApplyAccelerationImmediately {
+            smoothedLeaderAcceleration = acceleration
+        } else {
+            smoothedLeaderAcceleration = CGVector(
+                dx: smoothedLeaderAcceleration.dx + (acceleration.dx - smoothedLeaderAcceleration.dx) * PerformanceConfig.leaderAccelerationSmoothing,
+                dy: smoothedLeaderAcceleration.dy + (acceleration.dy - smoothedLeaderAcceleration.dy) * PerformanceConfig.leaderAccelerationSmoothing
+            )
+        }
+        leaderFish.velocity.dx += smoothedLeaderAcceleration.dx * timeStep
+        leaderFish.velocity.dy += smoothedLeaderAcceleration.dy * timeStep
         leaderFish.velocity = limited(leaderFish.velocity, maxSpeed: PerformanceConfig.leaderMaxSpeed)
         leaderFish.velocity.dx *= PerformanceConfig.leaderVelocityDamping
         leaderFish.velocity.dy *= PerformanceConfig.leaderVelocityDamping
@@ -197,18 +215,6 @@ final class SwarmSystem {
             radius: PerformanceConfig.leaderRadius
         )
         leader = leaderFish
-    }
-
-    private func desiredLeaderVelocity(for control: CGVector) -> CGVector {
-        let magnitude = length(control)
-        guard magnitude > 0 else { return .zero }
-
-        let speedRatio = min(magnitude / PerformanceConfig.maxTiltMagnitude, 1.0)
-        let desiredSpeed = PerformanceConfig.leaderMaxSpeed * speedRatio
-        return CGVector(
-            dx: (control.dx / magnitude) * desiredSpeed,
-            dy: (control.dy / magnitude) * desiredSpeed
-        )
     }
 
     private func updateSwarm(boundary: RoundedDisplayBoundary, timeStep: CGFloat) {

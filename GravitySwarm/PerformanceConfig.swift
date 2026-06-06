@@ -20,10 +20,10 @@ enum PerformanceConfig {
     static let maxTiltMagnitude: CGFloat = 1.25
     static let tiltDeadZone: CGFloat = 0.035
     static let calibrationSampleCount = 12
-    static let leaderSteeringResponse: CGFloat = 4.5
-    static let leaderMaxSteeringAcceleration: CGFloat = 185.0
+    static let leaderAcceleration: CGFloat = 520.0
+    static let leaderAccelerationSmoothing: CGFloat = 0.35
     static let leaderBoundarySoftZone: CGFloat = 18.0
-    static let leaderBoundaryOutwardVelocityDamping: CGFloat = 0.4
+    static let leaderBoundaryOutwardVelocityDamping: CGFloat = 0.75
     static let leaderVelocityDamping: CGFloat = 0.965
     static let leaderMaxSpeed: CGFloat = 135.0
     static let movingSpeedThreshold: CGFloat = 8.0
