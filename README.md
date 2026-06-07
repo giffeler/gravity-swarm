@@ -59,6 +59,10 @@ The app targets 30 fps with a fixed simulation timestep. The implementation avoi
 
 Initial limits are conservative for Apple Watch battery and thermal behavior. Real motion feel and battery impact should be validated on physical Apple Watch Ultra hardware before increasing the maximum swarm size. Runtime logs use the `com.giffeler.gravityswarm` subsystem for motion source, calibration, screen size, and Crown changes.
 
+## Display Sleep
+
+watchOS controls display sleep and Always-On dimming to preserve battery life and reduce burn-in risk. Gravity Swarm runs as a normal foreground watchOS app and does not try to keep the display awake indefinitely. When the system deactivates or backgrounds the app, the simulation and motion updates pause and resume when the app becomes active again.
+
 ## Simulator
 
 The simulator does not provide live Apple Watch motion input. Simulator builds use an animated fallback vector so the leader and swarm remain testable.
