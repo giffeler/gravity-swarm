@@ -14,10 +14,24 @@
 		3F8076C42C0A000100000001 /* MotionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F8076B92C0A000100000001 /* MotionController.swift */; };
 		3F8076C52C0A000100000001 /* PerformanceConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F8076BA2C0A000100000001 /* PerformanceConfig.swift */; };
 		3F8076C62C0A000100000001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3F8076BB2C0A000100000001 /* Assets.xcassets */; };
+		3F8077C02C0A000100000001 /* RoundedDisplayBoundaryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F8077B52C0A000100000001 /* RoundedDisplayBoundaryTests.swift */; };
+		3F8077C12C0A000100000001 /* SwarmSystemTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F8077B62C0A000100000001 /* SwarmSystemTests.swift */; };
+		3F8077C22C0A000100000001 /* TiltControlMappingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F8077B72C0A000100000001 /* TiltControlMappingTests.swift */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		3F8077E02C0A000100000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 3F8076922C0A000100000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 3F8076A52C0A000100000001;
+			remoteInfo = GravitySwarm;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		3F8076A02C0A000100000001 /* GravitySwarm.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GravitySwarm.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		3F8077A02C0A000100000001 /* GravitySwarmTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GravitySwarmTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		3F8076B52C0A000100000001 /* GravitySwarmApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GravitySwarmApp.swift; sourceTree = "<group>"; };
 		3F8076B62C0A000100000001 /* SwarmView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwarmView.swift; sourceTree = "<group>"; };
 		3F8076B72C0A000100000001 /* SwarmScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwarmScene.swift; sourceTree = "<group>"; };
@@ -27,6 +41,9 @@
 		3F8076BB2C0A000100000001 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		3F8076BC2C0A000100000001 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		3F8076BD2C0A000100000001 /* Signing.example.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Signing.example.xcconfig; sourceTree = "<group>"; };
+		3F8077B52C0A000100000001 /* RoundedDisplayBoundaryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoundedDisplayBoundaryTests.swift; sourceTree = "<group>"; };
+		3F8077B62C0A000100000001 /* SwarmSystemTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwarmSystemTests.swift; sourceTree = "<group>"; };
+		3F8077B72C0A000100000001 /* TiltControlMappingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TiltControlMappingTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -34,6 +51,7 @@
 			isa = PBXGroup;
 			children = (
 				3F8076B02C0A000100000001 /* GravitySwarm */,
+				3F8077B02C0A000100000001 /* GravitySwarmTests */,
 				3F8076BC2C0A000100000001 /* README.md */,
 				3F8076BD2C0A000100000001 /* Signing.example.xcconfig */,
 				3F8076A12C0A000100000001 /* Products */,
@@ -44,6 +62,7 @@
 			isa = PBXGroup;
 			children = (
 				3F8076A02C0A000100000001 /* GravitySwarm.app */,
+				3F8077A02C0A000100000001 /* GravitySwarmTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -60,6 +79,16 @@
 				3F8076BB2C0A000100000001 /* Assets.xcassets */,
 			);
 			path = GravitySwarm;
+			sourceTree = "<group>";
+		};
+		3F8077B02C0A000100000001 /* GravitySwarmTests */ = {
+			isa = PBXGroup;
+			children = (
+				3F8077B52C0A000100000001 /* RoundedDisplayBoundaryTests.swift */,
+				3F8077B62C0A000100000001 /* SwarmSystemTests.swift */,
+				3F8077B72C0A000100000001 /* TiltControlMappingTests.swift */,
+			);
+			path = GravitySwarmTests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -82,6 +111,24 @@
 			productReference = 3F8076A02C0A000100000001 /* GravitySwarm.app */;
 			productType = "com.apple.product-type.application";
 		};
+		3F8077A52C0A000100000001 /* GravitySwarmTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 3F8077D02C0A000100000001 /* Build configuration list for PBXNativeTarget "GravitySwarmTests" */;
+			buildPhases = (
+				3F8077A62C0A000100000001 /* Sources */,
+				3F8077A72C0A000100000001 /* Frameworks */,
+				3F8077A82C0A000100000001 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				3F8077E12C0A000100000001 /* PBXTargetDependency */,
+			);
+			name = GravitySwarmTests;
+			productName = GravitySwarmTests;
+			productReference = 3F8077A02C0A000100000001 /* GravitySwarmTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -94,6 +141,10 @@
 				TargetAttributes = {
 					3F8076A52C0A000100000001 = {
 						CreatedOnToolsVersion = 26.5;
+					};
+					3F8077A52C0A000100000001 = {
+						CreatedOnToolsVersion = 26.5;
+						TestTargetID = 3F8076A52C0A000100000001;
 					};
 				};
 			};
@@ -112,6 +163,7 @@
 			projectRoot = "";
 			targets = (
 				3F8076A52C0A000100000001 /* GravitySwarm */,
+				3F8077A52C0A000100000001 /* GravitySwarmTests */,
 			);
 		};
 /* End PBXProject section */
@@ -125,10 +177,24 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		3F8077A82C0A000100000001 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		3F8076A72C0A000100000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		3F8077A72C0A000100000001 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -151,7 +217,25 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		3F8077A62C0A000100000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3F8077C02C0A000100000001 /* RoundedDisplayBoundaryTests.swift in Sources */,
+				3F8077C12C0A000100000001 /* SwarmSystemTests.swift in Sources */,
+				3F8077C22C0A000100000001 /* TiltControlMappingTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		3F8077E12C0A000100000001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 3F8076A52C0A000100000001 /* GravitySwarm */;
+			targetProxy = 3F8077E02C0A000100000001 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		3F8076D12C0A000100000001 /* Debug */ = {
@@ -324,6 +408,52 @@
 			};
 			name = Release;
 		};
+		3F8077D32C0A000100000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = com.giffeler.gravityswarm.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/GravitySwarm.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/GravitySwarm";
+				WATCHOS_DEPLOYMENT_TARGET = 26.5;
+			};
+			name = Debug;
+		};
+		3F8077D42C0A000100000001 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = com.giffeler.gravityswarm.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/GravitySwarm.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/GravitySwarm";
+				WATCHOS_DEPLOYMENT_TARGET = 26.5;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -341,6 +471,15 @@
 			buildConfigurations = (
 				3F8076D32C0A000100000001 /* Debug */,
 				3F8076D42C0A000100000001 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		3F8077D02C0A000100000001 /* Build configuration list for PBXNativeTarget "GravitySwarmTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3F8077D32C0A000100000001 /* Debug */,
+				3F8077D42C0A000100000001 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
