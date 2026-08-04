@@ -10,6 +10,7 @@ struct SwarmView: View {
     @StateObject private var motionController = MotionController()
     @State private var scene = SwarmScene()
     @State private var crownValue = Double(PerformanceConfig.defaultSwarmCount)
+    @State private var isScenePaused = false
 
     var body: some View {
         GeometryReader { proxy in
@@ -17,7 +18,7 @@ struct SwarmView: View {
 
             SpriteView(
                 scene: scene,
-                isPaused: false,
+                isPaused: isScenePaused,
                 preferredFramesPerSecond: PerformanceConfig.preferredFramesPerSecond
             )
                 .frame(width: renderSize.width, height: renderSize.height)
@@ -40,11 +41,13 @@ struct SwarmView: View {
                 )
                 .onAppear {
                     configureScene(size: renderSize)
+                    isScenePaused = false
                     scene.setSimulationPaused(false)
                     motionController.start()
                     logger.info("App appeared with render size \(renderSize.width, privacy: .public)x\(renderSize.height, privacy: .public)")
                 }
                 .onDisappear {
+                    isScenePaused = true
                     scene.setSimulationPaused(true)
                     motionController.stop()
                 }
@@ -60,9 +63,11 @@ struct SwarmView: View {
                     switch newPhase {
                     case .active:
                         configureScene(size: renderSize)
+                        isScenePaused = false
                         scene.setSimulationPaused(false)
                         motionController.start()
                     default:
+                        isScenePaused = true
                         scene.setSimulationPaused(true)
                         motionController.stop()
                     }

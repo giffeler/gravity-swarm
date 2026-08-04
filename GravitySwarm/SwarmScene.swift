@@ -13,7 +13,6 @@ final class SwarmScene: SKScene {
     private var swarmTexture: SKTexture?
     private var accumulator: TimeInterval = 0
     private var previousUpdateTime: TimeInterval?
-    private var simulationPaused = false
     private var desiredSwarmCount = PerformanceConfig.defaultSwarmCount
 
     override init() {
@@ -50,8 +49,6 @@ final class SwarmScene: SKScene {
     }
 
     func setSimulationPaused(_ paused: Bool) {
-        simulationPaused = paused
-        isPaused = paused
         if paused {
             previousUpdateTime = nil
             accumulator = 0
@@ -65,8 +62,6 @@ final class SwarmScene: SKScene {
     }
 
     override func update(_ currentTime: TimeInterval) {
-        guard !simulationPaused else { return }
-
         guard let previousUpdateTime else {
             self.previousUpdateTime = currentTime
             return
