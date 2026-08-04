@@ -2,6 +2,7 @@ import CoreGraphics
 import Foundation
 import OSLog
 import SpriteKit
+import WatchKit
 
 final class SwarmScene: SKScene {
     private let swarmSystem = SwarmSystem()
@@ -15,6 +16,8 @@ final class SwarmScene: SKScene {
     private var accumulator: TimeInterval = 0
     private var previousUpdateTime: TimeInterval?
     private var desiredSwarmCount = PerformanceConfig.defaultSwarmCount
+    private var previousActiveCount = 0
+    private var isConfigured = false
     #if DEBUG
     private let performanceLogger = Logger(
         subsystem: "com.giffeler.gravityswarm",
@@ -27,17 +30,10 @@ final class SwarmScene: SKScene {
     #endif
 
     override init() {
-        super.init(size: CGSize(width: 205, height: 251))
+        super.init(size: CGSize(width: 1, height: 1))
         scaleMode = .resizeFill
         anchorPoint = .zero
         backgroundColor = .black
-        addChild(fishLayer)
-        leaderNode.zPosition = 10
-        addChild(leaderNode)
-        swarmSystem.reset(in: size)
-        swarmSystem.setActiveSwarmCount(desiredSwarmCount)
-        ensureNodes()
-        render()
     }
 
     required init?(coder aDecoder: NSCoder) {
@@ -48,14 +44,23 @@ final class SwarmScene: SKScene {
         self.motionController = motionController
         guard newSize.width > 1, newSize.height > 1 else { return }
 
-        let roundedSize = CGSize(width: newSize.width.rounded(.down), height: newSize.height.rounded(.down))
-        if size != roundedSize {
+        let roundedSize = CGSize(
+            width: newSize.width.rounded(.down),
+            height: newSize.height.rounded(.down)
+        )
+        if !isConfigured || size != roundedSize {
             size = roundedSize
             swarmSystem.reset(in: roundedSize)
             swarmSystem.setActiveSwarmCount(desiredSwarmCount)
         }
 
-        ensureNodes()
+        if !isConfigured {
+            isConfigured = true
+            addChild(fishLayer)
+            leaderNode.zPosition = 10
+            addChild(leaderNode)
+            ensureNodes()
+        }
         render()
     }
 
@@ -69,7 +74,9 @@ final class SwarmScene: SKScene {
     func setDesiredSwarmCount(_ count: Int) {
         desiredSwarmCount = count
         swarmSystem.setActiveSwarmCount(count)
-        render()
+        if isConfigured {
+            render()
+        }
     }
 
     override func update(_ currentTime: TimeInterval) {
@@ -80,6 +87,7 @@ final class SwarmScene: SKScene {
         }
         #endif
 
+        guard isConfigured else { return }
         guard let previousUpdateTime else {
             self.previousUpdateTime = currentTime
             return
@@ -151,46 +159,60 @@ final class SwarmScene: SKScene {
         if let leaderTexture {
             leaderNode.texture = leaderTexture
         }
+        let leaderSize = CGSize(
+            width: PerformanceConfig.leaderRadius * 2.0,
+            height: PerformanceConfig.leaderRadius * 2.0
+        )
+        if leaderNode.size != leaderSize {
+            leaderNode.size = leaderSize
+        }
 
         guard let swarmTexture else { return }
         while swarmNodes.count < PerformanceConfig.maximumSwarmCount {
             let node = SKSpriteNode(texture: swarmTexture)
             node.blendMode = .add
             node.zPosition = 2
+            node.size = CGSize(
+                width: PerformanceConfig.swarmRadius * 2.0,
+                height: PerformanceConfig.swarmRadius * 2.0
+            )
+            node.alpha = 0.72
+            node.isHidden = true
             swarmNodes.append(node)
             fishLayer.addChild(node)
         }
     }
 
     private func render() {
-        ensureNodes()
-
         let leader = swarmSystem.leader
         leaderNode.position = leader.position
-        leaderNode.size = CGSize(
-            width: PerformanceConfig.leaderRadius * 2.0,
-            height: PerformanceConfig.leaderRadius * 2.0
-        )
         leaderNode.zRotation = rotation(for: leader.velocity)
 
-        let activeCount = min(swarmSystem.activeSwarmCount, swarmSystem.swarm.count, swarmNodes.count)
-        for index in 0..<swarmNodes.count {
+        let activeCount = min(
+            swarmSystem.activeSwarmCount,
+            swarmSystem.swarm.count,
+            swarmNodes.count
+        )
+        updateNodeVisibility(activeCount: activeCount)
+        for index in 0..<activeCount {
             let node = swarmNodes[index]
-            guard index < activeCount else {
-                node.isHidden = true
-                continue
-            }
-
             let fish = swarmSystem.swarm[index]
-            node.isHidden = false
             node.position = fish.position
-            node.size = CGSize(
-                width: PerformanceConfig.swarmRadius * 2.0,
-                height: PerformanceConfig.swarmRadius * 2.0
-            )
             node.zRotation = rotation(for: fish.velocity)
-            node.alpha = 0.72
         }
+    }
+
+    private func updateNodeVisibility(activeCount: Int) {
+        if activeCount > previousActiveCount {
+            for index in previousActiveCount..<activeCount {
+                swarmNodes[index].isHidden = false
+            }
+        } else if activeCount < previousActiveCount {
+            for index in activeCount..<previousActiveCount {
+                swarmNodes[index].isHidden = true
+            }
+        }
+        previousActiveCount = activeCount
     }
 
     private func rotation(for velocity: CGVector) -> CGFloat {
@@ -198,17 +220,19 @@ final class SwarmScene: SKScene {
         return atan2(velocity.dy, velocity.dx)
     }
 
-    private static func makeFishTexture(diameter: Int, color: CGColor) -> SKTexture? {
+    private static func makeFishTexture(diameter: CGFloat, color: CGColor) -> SKTexture? {
+        let scale = WKInterfaceDevice.current().screenScale
+        let pixelDiameter = max(Int(ceil(diameter * scale)), 1)
         let bytesPerPixel = 4
-        let bytesPerRow = diameter * bytesPerPixel
-        var rgba = [UInt8](repeating: 0, count: diameter * bytesPerRow)
+        let bytesPerRow = pixelDiameter * bytesPerPixel
+        var rgba = [UInt8](repeating: 0, count: pixelDiameter * bytesPerRow)
         guard let colorSpace = CGColorSpace(name: CGColorSpace.sRGB) else { return nil }
 
         let image = rgba.withUnsafeMutableBytes { bytes -> CGImage? in
             guard let context = CGContext(
                 data: bytes.baseAddress,
-                width: diameter,
-                height: diameter,
+                width: pixelDiameter,
+                height: pixelDiameter,
                 bitsPerComponent: 8,
                 bytesPerRow: bytesPerRow,
                 space: colorSpace,
@@ -217,31 +241,37 @@ final class SwarmScene: SKScene {
                 return nil
             }
 
-            let rect = CGRect(x: 0, y: 0, width: diameter, height: diameter)
-            let radius = CGFloat(diameter) * 0.5
+            let rect = CGRect(
+                x: 0,
+                y: 0,
+                width: pixelDiameter,
+                height: pixelDiameter
+            )
             context.clear(rect)
+            context.scaleBy(x: scale, y: scale)
+            let radius = diameter * 0.5
             context.translateBy(x: radius, y: radius)
             context.setFillColor(color)
 
             let body = CGRect(
-                x: -radius * 0.45,
-                y: -radius * 0.32,
-                width: radius * 0.9,
-                height: radius * 0.64
+                x: -radius * 0.55,
+                y: -radius * 0.55,
+                width: radius * 1.3,
+                height: radius * 1.1
             )
             context.fillEllipse(in: body)
 
             context.beginPath()
-            context.move(to: CGPoint(x: -radius * 0.38, y: 0))
-            context.addLine(to: CGPoint(x: -radius * 0.82, y: radius * 0.34))
-            context.addLine(to: CGPoint(x: -radius * 0.82, y: -radius * 0.34))
+            context.move(to: CGPoint(x: -radius * 0.4, y: 0))
+            context.addLine(to: CGPoint(x: -radius * 0.95, y: radius * 0.65))
+            context.addLine(to: CGPoint(x: -radius * 0.95, y: -radius * 0.65))
             context.closePath()
             context.fillPath()
 
             context.beginPath()
-            context.move(to: CGPoint(x: radius * 0.36, y: 0))
-            context.addLine(to: CGPoint(x: radius * 0.68, y: radius * 0.18))
-            context.addLine(to: CGPoint(x: radius * 0.68, y: -radius * 0.18))
+            context.move(to: CGPoint(x: radius * 0.62, y: 0))
+            context.addLine(to: CGPoint(x: radius * 0.95, y: radius * 0.25))
+            context.addLine(to: CGPoint(x: radius * 0.95, y: -radius * 0.25))
             context.closePath()
             context.fillPath()
 
