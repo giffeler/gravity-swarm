@@ -20,6 +20,8 @@ enum PerformanceConfig {
     static let maxTiltMagnitude: CGFloat = 1.25
     static let tiltDeadZone: CGFloat = 0.035
     static let calibrationSampleCount = 12
+    static let neutralTiltXDefaultsKey = "motion.neutralTilt.x"
+    static let neutralTiltYDefaultsKey = "motion.neutralTilt.y"
     static let leaderAcceleration: CGFloat = 520.0
     static let leaderAccelerationSmoothing: CGFloat = 0.35
     static let leaderBoundarySoftZone: CGFloat = 18.0

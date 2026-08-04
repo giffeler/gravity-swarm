@@ -2,17 +2,35 @@ import CoreGraphics
 import CoreMotion
 import Foundation
 import OSLog
+import WatchKit
 
 final class MotionController: ObservableObject {
     private let logger = Logger(subsystem: "com.giffeler.gravityswarm", category: "Motion")
     private let motionManager = CMMotionManager()
+    private let defaults: UserDefaults
     private var fallbackTimer: Timer?
     private var neutralTilt = CGVector(dx: 0, dy: 0)
     private var smoothedTilt = CGVector(dx: 0, dy: 0)
     private var calibrationAccumulator = CGVector(dx: 0, dy: 0)
     private var calibrationSamplesRemaining = 0
+    private lazy var reversesMotionAxes: Bool = {
+        let reversesAxes = WKInterfaceDevice.current().crownOrientation == .left
+        let mode = reversesAxes ? "reversed" : "standard"
+        logger.info("Crown orientation uses \(mode, privacy: .public) motion axes")
+        return reversesAxes
+    }()
 
     private(set) var isUsingFallback = true
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        if let neutralTilt = Self.loadNeutralTilt(from: defaults) {
+            self.neutralTilt = neutralTilt
+            logger.info("Loaded persisted neutral tilt")
+        } else {
+            beginCalibration()
+        }
+    }
 
     var controlVector: CGVector {
         deadZoned(clamped(smoothedTilt, maxMagnitude: PerformanceConfig.maxTiltMagnitude))
@@ -20,7 +38,6 @@ final class MotionController: ObservableObject {
 
     func start() {
         stopFallbackTimer()
-        beginCalibration()
 
         #if targetEnvironment(simulator)
         startFallbackTimer(animated: true)
@@ -55,7 +72,8 @@ final class MotionController: ObservableObject {
     }
 
     private func ingestTilt(x: Double, y: Double) {
-        let mapped = CGVector(dx: CGFloat(x), dy: CGFloat(y))
+        let axisDirection: CGFloat = reversesMotionAxes ? -1 : 1
+        let mapped = CGVector(dx: CGFloat(x) * axisDirection, dy: CGFloat(y) * axisDirection)
         updateCalibrationIfNeeded(with: mapped)
         let calibrated = CGVector(
             dx: mapped.dx - neutralTilt.dx,
@@ -112,8 +130,22 @@ final class MotionController: ObservableObject {
             dx: calibrationAccumulator.dx / divisor,
             dy: calibrationAccumulator.dy / divisor
         )
+        defaults.set(Double(neutralTilt.dx), forKey: PerformanceConfig.neutralTiltXDefaultsKey)
+        defaults.set(Double(neutralTilt.dy), forKey: PerformanceConfig.neutralTiltYDefaultsKey)
         smoothedTilt = .zero
         logger.info("Calibrated neutral tilt x=\(self.neutralTilt.dx, privacy: .public) y=\(self.neutralTilt.dy, privacy: .public)")
+    }
+
+    private static func loadNeutralTilt(from defaults: UserDefaults) -> CGVector? {
+        guard defaults.object(forKey: PerformanceConfig.neutralTiltXDefaultsKey) != nil,
+              defaults.object(forKey: PerformanceConfig.neutralTiltYDefaultsKey) != nil else {
+            return nil
+        }
+
+        return CGVector(
+            dx: defaults.double(forKey: PerformanceConfig.neutralTiltXDefaultsKey),
+            dy: defaults.double(forKey: PerformanceConfig.neutralTiltYDefaultsKey)
+        )
     }
 
     private func clamped(_ vector: CGVector, maxMagnitude: CGFloat) -> CGVector {
