@@ -118,6 +118,10 @@ final class SwarmSystem {
     private(set) var swarm: [Fish] = []
     private(set) var activeSwarmCount = PerformanceConfig.defaultSwarmCount
     private var smoothedLeaderAcceleration = CGVector.zero
+    private var positionSnapshot = [CGPoint](
+        repeating: .zero,
+        count: PerformanceConfig.maximumSwarmCount
+    )
 
     func reset(in bounds: CGSize) {
         let boundary = RoundedDisplayBoundary(size: bounds)
@@ -225,12 +229,20 @@ final class SwarmSystem {
         let target = leader.position
 
         for index in 0..<count {
+            positionSnapshot[index] = swarm[index].position
+        }
+
+        for index in 0..<count {
             var fish = swarm[index]
             var acceleration = leaderMoving
-                ? followAcceleration(from: fish.position, to: target)
+                ? followAcceleration(from: positionSnapshot[index], to: target)
                 : wanderAcceleration(for: fish, index: index)
 
-            let separation = separationAcceleration(for: fish.position, index: index, count: count)
+            let separation = separationAcceleration(
+                for: positionSnapshot[index],
+                index: index,
+                count: count
+            )
             acceleration.dx += separation.dx
             acceleration.dy += separation.dy
 
@@ -279,7 +291,7 @@ final class SwarmSystem {
         var result = CGVector.zero
 
         for otherIndex in 0..<count where otherIndex != index {
-            let other = swarm[otherIndex].position
+            let other = positionSnapshot[otherIndex]
             let dx = position.x - other.x
             let dy = position.y - other.y
             let distanceSquared = dx * dx + dy * dy

@@ -3,8 +3,8 @@ import Foundation
 
 enum PerformanceConfig {
     static let preferredFramesPerSecond = 30
-    static let fixedTimeStep: TimeInterval = 1.0 / 30.0
-    static let maxAccumulatedTime: TimeInterval = 0.12
+    static let fixedTimeStep: TimeInterval = 1.0 / 60.0
+    static let maxAccumulatedTime: TimeInterval = fixedTimeStep * 6.0
 
     static let defaultSwarmCount = 48
     static let minimumSwarmCount = 0
