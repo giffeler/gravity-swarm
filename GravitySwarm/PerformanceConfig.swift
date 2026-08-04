@@ -3,8 +3,10 @@ import Foundation
 
 enum PerformanceConfig {
     static let preferredFramesPerSecond = 30
+    static let idlePreferredFramesPerSecond = 15
     static let fixedTimeStep: TimeInterval = 1.0 / 60.0
     static let maxAccumulatedTime: TimeInterval = fixedTimeStep * 6.0
+    static let idleControlMagnitudeThreshold: CGFloat = 0.0001
     #if DEBUG
     static let performanceMeasurementFrameCount = 300
     #endif

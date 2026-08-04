@@ -18,6 +18,8 @@ final class SwarmScene: SKScene {
     private var desiredSwarmCount = PerformanceConfig.defaultSwarmCount
     private var previousActiveCount = 0
     private var isConfigured = false
+    private var requestedFramesPerSecond = PerformanceConfig.preferredFramesPerSecond
+    private var frameRateHandler: ((Int) -> Void)?
     #if DEBUG
     private let performanceLogger = Logger(
         subsystem: "com.giffeler.gravityswarm",
@@ -40,8 +42,13 @@ final class SwarmScene: SKScene {
         fatalError("init(coder:) has not been implemented")
     }
 
-    func configure(size newSize: CGSize, motionController: MotionController) {
+    func configure(
+        size newSize: CGSize,
+        motionController: MotionController,
+        frameRateHandler: @escaping (Int) -> Void
+    ) {
         self.motionController = motionController
+        self.frameRateHandler = frameRateHandler
         guard newSize.width > 1, newSize.height > 1 else { return }
 
         let roundedSize = CGSize(
@@ -98,6 +105,7 @@ final class SwarmScene: SKScene {
         accumulator += frameDelta
 
         let control = motionController?.controlVector ?? .zero
+        updatePreferredFrameRate(control: control)
         while accumulator >= PerformanceConfig.fixedTimeStep {
             swarmSystem.update(
                 bounds: size,
@@ -108,6 +116,26 @@ final class SwarmScene: SKScene {
         }
 
         render()
+    }
+
+    private func updatePreferredFrameRate(control: CGVector) {
+        let controlMagnitudeSquared = control.dx * control.dx + control.dy * control.dy
+        let threshold = PerformanceConfig.idleControlMagnitudeThreshold
+        let leaderSpeedSquared =
+            swarmSystem.leader.velocity.dx * swarmSystem.leader.velocity.dx
+            + swarmSystem.leader.velocity.dy * swarmSystem.leader.velocity.dy
+        let isIdle =
+            controlMagnitudeSquared <= threshold * threshold
+            && leaderSpeedSquared
+                < PerformanceConfig.movingSpeedThreshold
+                    * PerformanceConfig.movingSpeedThreshold
+        let preferredFramesPerSecond = isIdle
+            ? PerformanceConfig.idlePreferredFramesPerSecond
+            : PerformanceConfig.preferredFramesPerSecond
+        guard preferredFramesPerSecond != requestedFramesPerSecond else { return }
+
+        requestedFramesPerSecond = preferredFramesPerSecond
+        frameRateHandler?(preferredFramesPerSecond)
     }
 
     #if DEBUG

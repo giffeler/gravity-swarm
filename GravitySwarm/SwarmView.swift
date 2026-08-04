@@ -11,6 +11,7 @@ struct SwarmView: View {
     @State private var scene = SwarmScene()
     @State private var crownValue = Double(PerformanceConfig.defaultSwarmCount)
     @State private var isScenePaused = false
+    @State private var preferredFramesPerSecond = PerformanceConfig.preferredFramesPerSecond
 
     var body: some View {
         GeometryReader { proxy in
@@ -19,7 +20,7 @@ struct SwarmView: View {
             SpriteView(
                 scene: scene,
                 isPaused: isScenePaused,
-                preferredFramesPerSecond: PerformanceConfig.preferredFramesPerSecond
+                preferredFramesPerSecond: preferredFramesPerSecond
             )
                 .frame(width: renderSize.width, height: renderSize.height)
                 .ignoresSafeArea()
@@ -31,13 +32,17 @@ struct SwarmView: View {
                     WKInterfaceDevice.current().play(.click)
                 }
                 .digitalCrownRotation(
-                    $crownValue,
+                    detent: $crownValue,
                     from: Double(PerformanceConfig.minimumSwarmCount),
                     through: Double(PerformanceConfig.maximumSwarmCount),
                     by: PerformanceConfig.crownStep,
                     sensitivity: .medium,
                     isContinuous: false,
-                    isHapticFeedbackEnabled: true
+                    isHapticFeedbackEnabled: true,
+                    onIdle: {
+                        let count = Int(crownValue.rounded())
+                        logger.debug("Swarm count set to \(count, privacy: .public)")
+                    }
                 )
                 .onAppear {
                     configureScene(size: renderSize)
@@ -54,7 +59,6 @@ struct SwarmView: View {
                 .onChange(of: crownValue) { _, newValue in
                     let count = Int(newValue.rounded())
                     scene.setDesiredSwarmCount(count)
-                    logger.info("Swarm count set to \(count, privacy: .public)")
                 }
                 .onChange(of: proxy.size) { _, newSize in
                     configureScene(size: fullScreenSize(fallback: newSize))
@@ -76,7 +80,11 @@ struct SwarmView: View {
     }
 
     private func configureScene(size: CGSize) {
-        scene.configure(size: size, motionController: motionController)
+        scene.configure(
+            size: size,
+            motionController: motionController,
+            frameRateHandler: { preferredFramesPerSecond = $0 }
+        )
         scene.setDesiredSwarmCount(Int(crownValue.rounded()))
     }
 
