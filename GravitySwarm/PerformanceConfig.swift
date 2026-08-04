@@ -6,7 +6,7 @@ enum PerformanceConfig {
     static let fixedTimeStep: TimeInterval = 1.0 / 60.0
     static let maxAccumulatedTime: TimeInterval = fixedTimeStep * 6.0
     #if DEBUG
-    static let showsPerformanceMetrics = true
+    static let performanceMeasurementFrameCount = 300
     #endif
 
     static let defaultSwarmCount = 48

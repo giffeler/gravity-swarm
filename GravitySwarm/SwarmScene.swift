@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import OSLog
 import SpriteKit
 
 final class SwarmScene: SKScene {
@@ -14,6 +15,16 @@ final class SwarmScene: SKScene {
     private var accumulator: TimeInterval = 0
     private var previousUpdateTime: TimeInterval?
     private var desiredSwarmCount = PerformanceConfig.defaultSwarmCount
+    #if DEBUG
+    private let performanceLogger = Logger(
+        subsystem: "com.giffeler.gravityswarm",
+        category: "Performance"
+    )
+    private var performanceFrameCount = 0
+    private var accumulatedUpdateDuration: TimeInterval = 0
+    private var accumulatedFrameDuration: TimeInterval = 0
+    private var previousPerformanceFrameTime: TimeInterval?
+    #endif
 
     override init() {
         super.init(size: CGSize(width: 205, height: 251))
@@ -31,14 +42,6 @@ final class SwarmScene: SKScene {
 
     required init?(coder aDecoder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
-    }
-
-    override func didMove(to view: SKView) {
-        #if DEBUG
-        view.showsFPS = PerformanceConfig.showsPerformanceMetrics
-        view.showsNodeCount = PerformanceConfig.showsPerformanceMetrics
-        view.showsDrawCount = PerformanceConfig.showsPerformanceMetrics
-        #endif
     }
 
     func configure(size newSize: CGSize, motionController: MotionController) {
@@ -70,6 +73,13 @@ final class SwarmScene: SKScene {
     }
 
     override func update(_ currentTime: TimeInterval) {
+        #if DEBUG
+        let updateStartTime = ProcessInfo.processInfo.systemUptime
+        defer {
+            recordPerformanceFrame(currentTime: currentTime, updateStartTime: updateStartTime)
+        }
+        #endif
+
         guard let previousUpdateTime else {
             self.previousUpdateTime = currentTime
             return
@@ -91,6 +101,38 @@ final class SwarmScene: SKScene {
 
         render()
     }
+
+    #if DEBUG
+    private func recordPerformanceFrame(
+        currentTime: TimeInterval,
+        updateStartTime: TimeInterval
+    ) {
+        if let previousPerformanceFrameTime {
+            accumulatedFrameDuration += currentTime - previousPerformanceFrameTime
+        }
+        self.previousPerformanceFrameTime = currentTime
+        accumulatedUpdateDuration += ProcessInfo.processInfo.systemUptime - updateStartTime
+        performanceFrameCount += 1
+
+        guard performanceFrameCount >= PerformanceConfig.performanceMeasurementFrameCount else {
+            return
+        }
+
+        let measuredIntervals = max(performanceFrameCount - 1, 1)
+        let averageUpdateMilliseconds =
+            accumulatedUpdateDuration / Double(performanceFrameCount) * 1_000
+        let averageFrameMilliseconds =
+            accumulatedFrameDuration / Double(measuredIntervals) * 1_000
+        performanceLogger.notice(
+            "PERF averageUpdateMs=\(averageUpdateMilliseconds, format: .fixed(precision: 3)) averageFrameMs=\(averageFrameMilliseconds, format: .fixed(precision: 3)) activeFish=\(self.swarmSystem.activeSwarmCount)"
+        )
+
+        performanceFrameCount = 0
+        accumulatedUpdateDuration = 0
+        accumulatedFrameDuration = 0
+        previousPerformanceFrameTime = nil
+    }
+    #endif
 
     private func ensureNodes() {
         if leaderTexture == nil {
