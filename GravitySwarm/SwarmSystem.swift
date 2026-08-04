@@ -8,14 +8,36 @@ struct Fish {
 }
 
 struct RoundedDisplayBoundary {
+    private struct InsetShape {
+        let radius: CGFloat
+        let straightHalfWidth: CGFloat
+        let straightHalfHeight: CGFloat
+    }
+
     let size: CGSize
     let cornerRadius: CGFloat
     let edgeInset: CGFloat
+    private let leaderShape: InsetShape
+    private let swarmShape: InsetShape
 
     init(size: CGSize) {
+        let cornerRadius =
+            min(size.width, size.height) * PerformanceConfig.displayCornerRadiusRatio
         self.size = size
-        self.cornerRadius = min(size.width, size.height) * PerformanceConfig.displayCornerRadiusRatio
+        self.cornerRadius = cornerRadius
         self.edgeInset = PerformanceConfig.displayEdgeInset
+        self.leaderShape = Self.makeInsetShape(
+            size: size,
+            cornerRadius: cornerRadius,
+            edgeInset: PerformanceConfig.displayEdgeInset,
+            fishRadius: PerformanceConfig.leaderRadius
+        )
+        self.swarmShape = Self.makeInsetShape(
+            size: size,
+            cornerRadius: cornerRadius,
+            edgeInset: PerformanceConfig.displayEdgeInset,
+            fishRadius: PerformanceConfig.swarmRadius
+        )
     }
 
     func randomPoint(radius: CGFloat) -> CGPoint {
@@ -39,28 +61,38 @@ struct RoundedDisplayBoundary {
     }
 
     func resolve(position: inout CGPoint, velocity: inout CGVector, radius: CGFloat) {
-        let distance = signedDistance(from: position, radius: radius)
-        guard distance > 0 else { return }
+        let boundary = signedDistanceAndNormal(from: position, radius: radius)
+        guard boundary.signedDistance > 0 else { return }
 
-        let normal = outwardNormal(at: position, radius: radius)
-        position.x -= normal.dx * (distance + 0.25)
-        position.y -= normal.dy * (distance + 0.25)
+        position.x -= boundary.normal.dx * (boundary.signedDistance + 0.25)
+        position.y -= boundary.normal.dy * (boundary.signedDistance + 0.25)
 
-        let velocityOutward = velocity.dx * normal.dx + velocity.dy * normal.dy
+        let velocityOutward =
+            velocity.dx * boundary.normal.dx + velocity.dy * boundary.normal.dy
         if velocityOutward > 0 {
-            velocity.dx -= velocityOutward * normal.dx
-            velocity.dy -= velocityOutward * normal.dy
+            velocity.dx -= velocityOutward * boundary.normal.dx
+            velocity.dy -= velocityOutward * boundary.normal.dy
         }
     }
 
     func edgeInfluence(point: CGPoint, radius: CGFloat, threshold: CGFloat) -> (normal: CGVector, strength: CGFloat)? {
-        let distance = signedDistance(from: point, radius: radius)
-        guard distance >= -threshold else { return nil }
-        let strength = min(max((threshold + distance) / threshold, 0), 1)
-        return (outwardNormal(at: point, radius: radius), strength)
+        let boundary = signedDistanceAndNormal(from: point, radius: radius)
+        guard boundary.signedDistance >= -threshold else { return nil }
+        let strength = min(
+            max((threshold + boundary.signedDistance) / threshold, 0),
+            1
+        )
+        return (boundary.normal, strength)
     }
 
-    private func signedDistance(from point: CGPoint, radius: CGFloat) -> CGFloat {
+    func signedDistance(from point: CGPoint, radius: CGFloat) -> CGFloat {
+        signedDistanceAndNormal(from: point, radius: radius).signedDistance
+    }
+
+    func signedDistanceAndNormal(
+        from point: CGPoint,
+        radius: CGFloat
+    ) -> (signedDistance: CGFloat, normal: CGVector) {
         let shape = insetShape(for: radius)
         let localX = point.x - size.width * 0.5
         let localY = point.y - size.height * 0.5
@@ -69,39 +101,51 @@ struct RoundedDisplayBoundary {
         let outsideX = max(qX, 0)
         let outsideY = max(qY, 0)
         let outsideDistance = sqrt(outsideX * outsideX + outsideY * outsideY)
-        return outsideDistance + min(max(qX, qY), 0) - shape.radius
-    }
+        let signedDistance =
+            outsideDistance + min(max(qX, qY), 0) - shape.radius
+        let normal: CGVector
 
-    private func outwardNormal(at point: CGPoint, radius: CGFloat) -> CGVector {
-        let shape = insetShape(for: radius)
-        let localX = point.x - size.width * 0.5
-        let localY = point.y - size.height * 0.5
-        let qX = abs(localX) - shape.straightHalfWidth
-        let qY = abs(localY) - shape.straightHalfHeight
-        let outsideX = max(qX, 0)
-        let outsideY = max(qY, 0)
-        let outsideLength = sqrt(outsideX * outsideX + outsideY * outsideY)
-
-        if outsideLength > 0.0001 {
-            return CGVector(
-                dx: sign(localX) * outsideX / outsideLength,
-                dy: sign(localY) * outsideY / outsideLength
+        if outsideDistance > 0.0001 {
+            normal = CGVector(
+                dx: sign(localX) * outsideX / outsideDistance,
+                dy: sign(localY) * outsideY / outsideDistance
             )
+        } else if qX > qY {
+            normal = CGVector(dx: sign(localX), dy: 0)
+        } else {
+            normal = CGVector(dx: 0, dy: sign(localY))
         }
 
-        if qX > qY {
-            return CGVector(dx: sign(localX), dy: 0)
-        }
-
-        return CGVector(dx: 0, dy: sign(localY))
+        return (signedDistance, normal)
     }
 
-    private func insetShape(for radius: CGFloat) -> (radius: CGFloat, straightHalfWidth: CGFloat, straightHalfHeight: CGFloat) {
-        let margin = edgeInset + radius
+    private func insetShape(for radius: CGFloat) -> InsetShape {
+        if radius == PerformanceConfig.leaderRadius {
+            return leaderShape
+        }
+        if radius == PerformanceConfig.swarmRadius {
+            return swarmShape
+        }
+
+        return Self.makeInsetShape(
+            size: size,
+            cornerRadius: cornerRadius,
+            edgeInset: edgeInset,
+            fishRadius: radius
+        )
+    }
+
+    private static func makeInsetShape(
+        size: CGSize,
+        cornerRadius: CGFloat,
+        edgeInset: CGFloat,
+        fishRadius: CGFloat
+    ) -> InsetShape {
+        let margin = edgeInset + fishRadius
         let halfWidth = max(0, size.width * 0.5 - margin)
         let halfHeight = max(0, size.height * 0.5 - margin)
         let radius = min(max(0, cornerRadius - margin), halfWidth, halfHeight)
-        return (
+        return InsetShape(
             radius: radius,
             straightHalfWidth: max(0, halfWidth - radius),
             straightHalfHeight: max(0, halfHeight - radius)
@@ -122,9 +166,23 @@ final class SwarmSystem {
         repeating: .zero,
         count: PerformanceConfig.maximumSwarmCount
     )
+    private var separationAccelerations = [CGVector](
+        repeating: .zero,
+        count: PerformanceConfig.maximumSwarmCount
+    )
+    private var gridHeads: [Int] = []
+    private var gridNext = [Int](
+        repeating: -1,
+        count: PerformanceConfig.maximumSwarmCount
+    )
+    private var gridColumnCount = 1
+    private var gridRowCount = 1
+    private var cachedBoundary: RoundedDisplayBoundary?
 
     func reset(in bounds: CGSize) {
         let boundary = RoundedDisplayBoundary(size: bounds)
+        cachedBoundary = boundary
+        configureGrid(for: bounds)
         leader = Fish(
             position: CGPoint(x: bounds.width * 0.5, y: bounds.height * 0.5),
             velocity: .zero,
@@ -158,7 +216,7 @@ final class SwarmSystem {
             reset(in: bounds)
         }
 
-        let boundary = RoundedDisplayBoundary(size: bounds)
+        let boundary = boundary(for: bounds)
         updateLeader(control: control, boundary: boundary, timeStep: timeStep)
         updateSwarm(boundary: boundary, timeStep: timeStep)
     }
@@ -231,6 +289,7 @@ final class SwarmSystem {
         for index in 0..<count {
             positionSnapshot[index] = swarm[index].position
         }
+        rebuildSeparationAccelerations(count: count)
 
         for index in 0..<count {
             var fish = swarm[index]
@@ -238,11 +297,7 @@ final class SwarmSystem {
                 ? followAcceleration(from: positionSnapshot[index], to: target)
                 : wanderAcceleration(for: fish, index: index)
 
-            let separation = separationAcceleration(
-                for: positionSnapshot[index],
-                index: index,
-                count: count
-            )
+            let separation = separationAccelerations[index]
             acceleration.dx += separation.dx
             acceleration.dy += separation.dy
 
@@ -285,25 +340,112 @@ final class SwarmSystem {
         )
     }
 
-    private func separationAcceleration(for position: CGPoint, index: Int, count: Int) -> CGVector {
+    private func rebuildSeparationAccelerations(count: Int) {
         let desired = PerformanceConfig.desiredSpacing
         let desiredSquared = desired * desired
-        var result = CGVector.zero
+        let columnCount = gridColumnCount
+        let rowCount = gridRowCount
 
-        for otherIndex in 0..<count where otherIndex != index {
-            let other = positionSnapshot[otherIndex]
-            let dx = position.x - other.x
-            let dy = position.y - other.y
-            let distanceSquared = dx * dx + dy * dy
-            guard distanceSquared > 0.01, distanceSquared < desiredSquared else { continue }
+        positionSnapshot.withUnsafeBufferPointer { positions in
+            gridHeads.withUnsafeMutableBufferPointer { heads in
+                gridNext.withUnsafeMutableBufferPointer { nextIndices in
+                    separationAccelerations.withUnsafeMutableBufferPointer { accelerations in
+                        for cellIndex in heads.indices {
+                            heads[cellIndex] = -1
+                        }
+                        for index in 0..<count {
+                            accelerations[index] = .zero
+                            let position = positions[index]
+                            let column = min(
+                                max(Int(position.x / desired), 0),
+                                columnCount - 1
+                            )
+                            let row = min(
+                                max(Int(position.y / desired), 0),
+                                rowCount - 1
+                            )
+                            let cellIndex = row * columnCount + column
+                            nextIndices[index] = heads[cellIndex]
+                            heads[cellIndex] = index
+                        }
 
-            let distance = sqrt(distanceSquared)
-            let strength = (desired - distance) / desired
-            result.dx += (dx / distance) * strength * PerformanceConfig.separationAcceleration
-            result.dy += (dy / distance) * strength * PerformanceConfig.separationAcceleration
+                        for index in 0..<count {
+                            let position = positions[index]
+                            let column = min(
+                                max(Int(position.x / desired), 0),
+                                columnCount - 1
+                            )
+                            let row = min(
+                                max(Int(position.y / desired), 0),
+                                rowCount - 1
+                            )
+                            let minimumColumn = max(column - 1, 0)
+                            let maximumColumn = min(column + 1, columnCount - 1)
+                            let minimumRow = max(row - 1, 0)
+                            let maximumRow = min(row + 1, rowCount - 1)
+
+                            for neighborRow in minimumRow...maximumRow {
+                                for neighborColumn in minimumColumn...maximumColumn {
+                                    var otherIndex =
+                                        heads[neighborRow * columnCount + neighborColumn]
+                                    while otherIndex >= 0 {
+                                        if otherIndex > index {
+                                            let other = positions[otherIndex]
+                                            let dx = position.x - other.x
+                                            let dy = position.y - other.y
+                                            let distanceSquared = dx * dx + dy * dy
+
+                                            if distanceSquared > 0.01,
+                                               distanceSquared < desiredSquared {
+                                                let distance = sqrt(distanceSquared)
+                                                let strength =
+                                                    (desired - distance) / desired
+                                                    * PerformanceConfig.separationAcceleration
+                                                let force = CGVector(
+                                                    dx: dx / distance * strength,
+                                                    dy: dy / distance * strength
+                                                )
+                                                accelerations[index].dx += force.dx
+                                                accelerations[index].dy += force.dy
+                                                accelerations[otherIndex].dx -= force.dx
+                                                accelerations[otherIndex].dy -= force.dy
+                                            }
+                                        }
+                                        otherIndex = nextIndices[otherIndex]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func boundary(for bounds: CGSize) -> RoundedDisplayBoundary {
+        if let cachedBoundary, cachedBoundary.size == bounds {
+            return cachedBoundary
         }
 
-        return result
+        let boundary = RoundedDisplayBoundary(size: bounds)
+        cachedBoundary = boundary
+        configureGrid(for: bounds)
+        return boundary
+    }
+
+    private func configureGrid(for bounds: CGSize) {
+        gridColumnCount = max(
+            Int(ceil(bounds.width / PerformanceConfig.desiredSpacing)),
+            1
+        )
+        gridRowCount = max(
+            Int(ceil(bounds.height / PerformanceConfig.desiredSpacing)),
+            1
+        )
+        let cellCount = gridColumnCount * gridRowCount
+        if gridHeads.count != cellCount {
+            gridHeads = [Int](repeating: -1, count: cellCount)
+        }
     }
 
     private func limited(_ vector: CGVector, maxSpeed: CGFloat) -> CGVector {
