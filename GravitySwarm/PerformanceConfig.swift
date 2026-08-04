@@ -12,6 +12,7 @@ enum PerformanceConfig {
     #endif
 
     static let defaultSwarmCount = 48
+    static let reducedMotionDefaultSwarmCount = 24
     static let minimumSwarmCount = 0
     static let maximumSwarmCount = 180
     static let crownStep = 1.0
@@ -37,6 +38,8 @@ enum PerformanceConfig {
 
     static let followAcceleration: CGFloat = 95.0
     static let wanderAcceleration: CGFloat = 26.0
+    static let wanderPhasePeriod: CGFloat = .pi * 2.0
+    static let reducedMotionAccelerationScale: CGFloat = 0.5
     static let separationAcceleration: CGFloat = 130.0
     static let alignmentFactor: CGFloat = 0.025
     static let swarmVelocityDamping: CGFloat = 0.982

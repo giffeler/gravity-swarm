@@ -4,6 +4,7 @@ import OSLog
 import SpriteKit
 import WatchKit
 
+@MainActor
 final class SwarmScene: SKScene {
     private let swarmSystem = SwarmSystem()
     private let fishLayer = SKNode()
@@ -18,6 +19,7 @@ final class SwarmScene: SKScene {
     private var desiredSwarmCount = PerformanceConfig.defaultSwarmCount
     private var previousActiveCount = 0
     private var isConfigured = false
+    private var configuredSize = CGSize.zero
     private var requestedFramesPerSecond = PerformanceConfig.preferredFramesPerSecond
     private var frameRateHandler: ((Int) -> Void)?
     #if DEBUG
@@ -43,21 +45,24 @@ final class SwarmScene: SKScene {
     }
 
     func configure(
-        size newSize: CGSize,
         motionController: MotionController,
         frameRateHandler: @escaping (Int) -> Void
     ) {
         self.motionController = motionController
         self.frameRateHandler = frameRateHandler
-        guard newSize.width > 1, newSize.height > 1 else { return }
+        configureSimulationIfNeeded(for: size)
+    }
 
-        let roundedSize = CGSize(
-            width: newSize.width.rounded(.down),
-            height: newSize.height.rounded(.down)
-        )
-        if !isConfigured || size != roundedSize {
-            size = roundedSize
-            swarmSystem.reset(in: roundedSize)
+    override func didChangeSize(_ oldSize: CGSize) {
+        super.didChangeSize(oldSize)
+        configureSimulationIfNeeded(for: size)
+    }
+
+    private func configureSimulationIfNeeded(for newSize: CGSize) {
+        guard newSize.width > 1, newSize.height > 1 else { return }
+        if !isConfigured || configuredSize != newSize {
+            configuredSize = newSize
+            swarmSystem.reset(in: newSize)
             swarmSystem.setActiveSwarmCount(desiredSwarmCount)
         }
 
@@ -65,7 +70,7 @@ final class SwarmScene: SKScene {
             isConfigured = true
             addChild(fishLayer)
             leaderNode.zPosition = 10
-            addChild(leaderNode)
+            fishLayer.addChild(leaderNode)
             ensureNodes()
         }
         render()
@@ -84,6 +89,10 @@ final class SwarmScene: SKScene {
         if isConfigured {
             render()
         }
+    }
+
+    func setReduceMotionEnabled(_ enabled: Bool) {
+        swarmSystem.setReduceMotionEnabled(enabled)
     }
 
     override func update(_ currentTime: TimeInterval) {

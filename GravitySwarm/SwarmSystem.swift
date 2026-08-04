@@ -178,6 +178,7 @@ final class SwarmSystem {
     private var gridColumnCount = 1
     private var gridRowCount = 1
     private var cachedBoundary: RoundedDisplayBoundary?
+    private var isReduceMotionEnabled = false
 
     func reset(in bounds: CGSize) {
         let boundary = RoundedDisplayBoundary(size: bounds)
@@ -208,6 +209,10 @@ final class SwarmSystem {
             PerformanceConfig.minimumSwarmCount,
             min(count, PerformanceConfig.maximumSwarmCount)
         )
+    }
+
+    func setReduceMotionEnabled(_ enabled: Bool) {
+        isReduceMotionEnabled = enabled
     }
 
     func update(bounds: CGSize, control: CGVector, timeStep: CGFloat) {
@@ -313,7 +318,9 @@ final class SwarmSystem {
             fish.velocity.dy *= PerformanceConfig.swarmVelocityDamping
             fish.position.x += fish.velocity.dx * timeStep
             fish.position.y += fish.velocity.dy * timeStep
-            fish.wanderPhase += timeStep
+            fish.wanderPhase = (fish.wanderPhase + timeStep).truncatingRemainder(
+                dividingBy: PerformanceConfig.wanderPhasePeriod
+            )
 
             boundary.resolve(
                 position: &fish.position,
@@ -328,15 +335,26 @@ final class SwarmSystem {
     private func followAcceleration(from position: CGPoint, to target: CGPoint) -> CGVector {
         let offset = CGVector(dx: target.x - position.x, dy: target.y - position.y)
         let distance = max(length(offset), 1)
-        let scale = min(distance / 48.0, 1.0) * PerformanceConfig.followAcceleration / distance
+        let reduceMotionScale = isReduceMotionEnabled
+            ? PerformanceConfig.reducedMotionAccelerationScale
+            : 1.0
+        let scale =
+            min(distance / 48.0, 1.0)
+            * PerformanceConfig.followAcceleration
+            * reduceMotionScale
+            / distance
         return CGVector(dx: offset.dx * scale, dy: offset.dy * scale)
     }
 
     private func wanderAcceleration(for fish: Fish, index: Int) -> CGVector {
         let angle = fish.wanderPhase * 1.7 + CGFloat(index) * 0.61
+        let acceleration = isReduceMotionEnabled
+            ? PerformanceConfig.wanderAcceleration
+                * PerformanceConfig.reducedMotionAccelerationScale
+            : PerformanceConfig.wanderAcceleration
         return CGVector(
-            dx: cos(angle) * PerformanceConfig.wanderAcceleration,
-            dy: sin(angle * 0.83) * PerformanceConfig.wanderAcceleration
+            dx: cos(angle) * acceleration,
+            dy: sin(angle * 0.83) * acceleration
         )
     }
 
