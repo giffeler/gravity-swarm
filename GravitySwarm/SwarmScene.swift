@@ -5,7 +5,7 @@ import SpriteKit
 import WatchKit
 
 @MainActor
-final class SwarmScene: SKScene {
+final class SwarmScene: SKScene, @unchecked Sendable {
     private let swarmSystem = SwarmSystem()
     private let fishLayer = SKNode()
     private let leaderNode = SKSpriteNode()
@@ -53,9 +53,11 @@ final class SwarmScene: SKScene {
         configureSimulationIfNeeded(for: size)
     }
 
-    override func didChangeSize(_ oldSize: CGSize) {
+    nonisolated override func didChangeSize(_ oldSize: CGSize) {
         super.didChangeSize(oldSize)
-        configureSimulationIfNeeded(for: size)
+        MainActor.assumeIsolated {
+            configureSimulationIfNeeded(for: size)
+        }
     }
 
     private func configureSimulationIfNeeded(for newSize: CGSize) {
@@ -95,7 +97,13 @@ final class SwarmScene: SKScene {
         swarmSystem.setReduceMotionEnabled(enabled)
     }
 
-    override func update(_ currentTime: TimeInterval) {
+    nonisolated override func update(_ currentTime: TimeInterval) {
+        MainActor.assumeIsolated {
+            updateOnMainActor(currentTime)
+        }
+    }
+
+    private func updateOnMainActor(_ currentTime: TimeInterval) {
         #if DEBUG
         let updateStartTime = ProcessInfo.processInfo.systemUptime
         defer {
