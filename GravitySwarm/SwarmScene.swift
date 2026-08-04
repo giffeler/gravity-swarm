@@ -33,6 +33,14 @@ final class SwarmScene: SKScene {
         fatalError("init(coder:) has not been implemented")
     }
 
+    override func didMove(to view: SKView) {
+        #if DEBUG
+        view.showsFPS = PerformanceConfig.showsPerformanceMetrics
+        view.showsNodeCount = PerformanceConfig.showsPerformanceMetrics
+        view.showsDrawCount = PerformanceConfig.showsPerformanceMetrics
+        #endif
+    }
+
     func configure(size newSize: CGSize, motionController: MotionController) {
         self.motionController = motionController
         guard newSize.width > 1, newSize.height > 1 else { return }
