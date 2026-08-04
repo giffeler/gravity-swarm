@@ -4,7 +4,29 @@ import Foundation
 import OSLog
 import WatchKit
 
-final class MotionController: ObservableObject {
+enum TiltControlMapping {
+    static func remap(
+        _ vector: CGVector,
+        deadZone: CGFloat,
+        maximumMagnitude: CGFloat
+    ) -> CGVector {
+        let magnitude = sqrt(vector.dx * vector.dx + vector.dy * vector.dy)
+        guard magnitude > deadZone,
+              magnitude > 0,
+              maximumMagnitude > deadZone else {
+            return .zero
+        }
+
+        let remappedMagnitude =
+            (min(magnitude, maximumMagnitude) - deadZone)
+            / (maximumMagnitude - deadZone)
+        let scale = remappedMagnitude / magnitude
+        return CGVector(dx: vector.dx * scale, dy: vector.dy * scale)
+    }
+}
+
+@MainActor
+final class MotionController {
     private let logger = Logger(subsystem: "com.giffeler.gravityswarm", category: "Motion")
     private let motionManager = CMMotionManager()
     private let defaults: UserDefaults
@@ -13,14 +35,13 @@ final class MotionController: ObservableObject {
     private var smoothedTilt = CGVector(dx: 0, dy: 0)
     private var calibrationAccumulator = CGVector(dx: 0, dy: 0)
     private var calibrationSamplesRemaining = 0
+    private var isRunning = false
     private lazy var reversesMotionAxes: Bool = {
         let reversesAxes = WKInterfaceDevice.current().crownOrientation == .left
         let mode = reversesAxes ? "reversed" : "standard"
         logger.info("Crown orientation uses \(mode, privacy: .public) motion axes")
         return reversesAxes
     }()
-
-    private(set) var isUsingFallback = true
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -33,10 +54,16 @@ final class MotionController: ObservableObject {
     }
 
     var controlVector: CGVector {
-        deadZoned(clamped(smoothedTilt, maxMagnitude: PerformanceConfig.maxTiltMagnitude))
+        TiltControlMapping.remap(
+            smoothedTilt,
+            deadZone: PerformanceConfig.tiltDeadZone,
+            maximumMagnitude: PerformanceConfig.maxTiltMagnitude
+        )
     }
 
     func start() {
+        guard !isRunning else { return }
+        isRunning = true
         stopFallbackTimer()
 
         #if targetEnvironment(simulator)
@@ -50,17 +77,22 @@ final class MotionController: ObservableObject {
             return
         }
 
-        isUsingFallback = false
         motionManager.deviceMotionUpdateInterval = PerformanceConfig.fixedTimeStep
         motionManager.startDeviceMotionUpdates(to: .main) { [weak self] motion, _ in
-            guard let self, let gravity = motion?.gravity else { return }
-            self.ingestTilt(x: gravity.x, y: gravity.y)
+            guard let gravity = motion?.gravity else { return }
+            let x = gravity.x
+            let y = gravity.y
+            Task { @MainActor [weak self] in
+                self?.ingestTilt(x: x, y: y)
+            }
         }
         logger.info("Started device motion updates")
         #endif
     }
 
     func stop() {
+        guard isRunning else { return }
+        isRunning = false
         motionManager.stopDeviceMotionUpdates()
         stopFallbackTimer()
         logger.info("Stopped motion updates")
@@ -83,7 +115,6 @@ final class MotionController: ObservableObject {
     }
 
     private func startFallbackTimer(animated: Bool) {
-        isUsingFallback = true
         guard animated else {
             smoothedTilt = CGVector(dx: 0, dy: 0)
             return
@@ -91,11 +122,16 @@ final class MotionController: ObservableObject {
 
         let startDate = Date()
         fallbackTimer = Timer.scheduledTimer(withTimeInterval: PerformanceConfig.fixedTimeStep, repeats: true) { [weak self] _ in
-            guard let self else { return }
-            let elapsed = Date().timeIntervalSince(startDate)
-            let angle = CGFloat(elapsed * 0.75)
-            let vector = CGVector(dx: cos(angle) * 0.75, dy: sin(angle * 0.8) * 0.65)
-            self.ingestTilt(x: Double(vector.dx), y: Double(vector.dy))
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                let elapsed = Date().timeIntervalSince(startDate)
+                let angle = CGFloat(elapsed * 0.75)
+                let vector = CGVector(
+                    dx: cos(angle) * 0.75,
+                    dy: sin(angle * 0.8) * 0.65
+                )
+                self.ingestTilt(x: Double(vector.dx), y: Double(vector.dy))
+            }
         }
     }
 
@@ -148,16 +184,4 @@ final class MotionController: ObservableObject {
         )
     }
 
-    private func clamped(_ vector: CGVector, maxMagnitude: CGFloat) -> CGVector {
-        let magnitude = sqrt(vector.dx * vector.dx + vector.dy * vector.dy)
-        guard magnitude > maxMagnitude, magnitude > 0 else { return vector }
-        let scale = maxMagnitude / magnitude
-        return CGVector(dx: vector.dx * scale, dy: vector.dy * scale)
-    }
-
-    private func deadZoned(_ vector: CGVector) -> CGVector {
-        let magnitude = sqrt(vector.dx * vector.dx + vector.dy * vector.dy)
-        guard magnitude >= PerformanceConfig.tiltDeadZone else { return .zero }
-        return vector
-    }
 }
