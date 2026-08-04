@@ -157,48 +157,53 @@ final class SwarmScene: SKScene {
         let bytesPerPixel = 4
         let bytesPerRow = diameter * bytesPerPixel
         var rgba = [UInt8](repeating: 0, count: diameter * bytesPerRow)
-        guard let colorSpace = CGColorSpace(name: CGColorSpace.sRGB),
-              let context = CGContext(
-                data: &rgba,
+        guard let colorSpace = CGColorSpace(name: CGColorSpace.sRGB) else { return nil }
+
+        let image = rgba.withUnsafeMutableBytes { bytes -> CGImage? in
+            guard let context = CGContext(
+                data: bytes.baseAddress,
                 width: diameter,
                 height: diameter,
                 bitsPerComponent: 8,
                 bytesPerRow: bytesPerRow,
                 space: colorSpace,
                 bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-              ) else {
-            return nil
+            ) else {
+                return nil
+            }
+
+            let rect = CGRect(x: 0, y: 0, width: diameter, height: diameter)
+            let radius = CGFloat(diameter) * 0.5
+            context.clear(rect)
+            context.translateBy(x: radius, y: radius)
+            context.setFillColor(color)
+
+            let body = CGRect(
+                x: -radius * 0.45,
+                y: -radius * 0.32,
+                width: radius * 0.9,
+                height: radius * 0.64
+            )
+            context.fillEllipse(in: body)
+
+            context.beginPath()
+            context.move(to: CGPoint(x: -radius * 0.38, y: 0))
+            context.addLine(to: CGPoint(x: -radius * 0.82, y: radius * 0.34))
+            context.addLine(to: CGPoint(x: -radius * 0.82, y: -radius * 0.34))
+            context.closePath()
+            context.fillPath()
+
+            context.beginPath()
+            context.move(to: CGPoint(x: radius * 0.36, y: 0))
+            context.addLine(to: CGPoint(x: radius * 0.68, y: radius * 0.18))
+            context.addLine(to: CGPoint(x: radius * 0.68, y: -radius * 0.18))
+            context.closePath()
+            context.fillPath()
+
+            return context.makeImage()
         }
 
-        let rect = CGRect(x: 0, y: 0, width: diameter, height: diameter)
-        let radius = CGFloat(diameter) * 0.5
-        context.clear(rect)
-        context.translateBy(x: radius, y: radius)
-        context.setFillColor(color)
-
-        let body = CGRect(
-            x: -radius * 0.45,
-            y: -radius * 0.32,
-            width: radius * 0.9,
-            height: radius * 0.64
-        )
-        context.fillEllipse(in: body)
-
-        context.beginPath()
-        context.move(to: CGPoint(x: -radius * 0.38, y: 0))
-        context.addLine(to: CGPoint(x: -radius * 0.82, y: radius * 0.34))
-        context.addLine(to: CGPoint(x: -radius * 0.82, y: -radius * 0.34))
-        context.closePath()
-        context.fillPath()
-
-        context.beginPath()
-        context.move(to: CGPoint(x: radius * 0.36, y: 0))
-        context.addLine(to: CGPoint(x: radius * 0.68, y: radius * 0.18))
-        context.addLine(to: CGPoint(x: radius * 0.68, y: -radius * 0.18))
-        context.closePath()
-        context.fillPath()
-
-        guard let image = context.makeImage() else { return nil }
+        guard let image else { return nil }
         let texture = SKTexture(cgImage: image)
         texture.filteringMode = .linear
         return texture
