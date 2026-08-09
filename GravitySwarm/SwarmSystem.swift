@@ -299,7 +299,12 @@ final class SwarmSystem {
         for index in 0..<count {
             var fish = swarm[index]
             var acceleration = leaderMoving
-                ? followAcceleration(from: positionSnapshot[index], to: target)
+                ? movingFollowAcceleration(
+                    for: fish,
+                    index: index,
+                    from: positionSnapshot[index],
+                    to: target
+                )
                 : wanderAcceleration(for: fish, index: index)
 
             let separation = separationAccelerations[index]
@@ -335,27 +340,73 @@ final class SwarmSystem {
     private func followAcceleration(from position: CGPoint, to target: CGPoint) -> CGVector {
         let offset = CGVector(dx: target.x - position.x, dy: target.y - position.y)
         let distance = max(length(offset), 1)
-        let reduceMotionScale = isReduceMotionEnabled
-            ? PerformanceConfig.reducedMotionAccelerationScale
-            : 1.0
         let scale =
             min(distance / 48.0, 1.0)
             * PerformanceConfig.followAcceleration
-            * reduceMotionScale
+            * swarmMotionScale
             / distance
         return CGVector(dx: offset.dx * scale, dy: offset.dy * scale)
     }
 
+    func movingFollowAcceleration(
+        for fish: Fish,
+        index: Int,
+        from position: CGPoint,
+        to target: CGPoint
+    ) -> CGVector {
+        let flowPhase =
+            fish.wanderPhase * PerformanceConfig.movingFlowPhaseRate
+            + CGFloat(index) * PerformanceConfig.movingFlowIndexPhase
+        let sine = sin(flowPhase)
+        let cosine = cos(flowPhase)
+        let motionScale = swarmMotionScale
+        let followVariation =
+            sine
+            * PerformanceConfig.movingFollowStrengthVariation
+            * motionScale
+        var acceleration = followAcceleration(from: position, to: target)
+        acceleration.dx *= 1.0 + followVariation
+        acceleration.dy *= 1.0 + followVariation
+
+        let wanderStrength =
+            PerformanceConfig.wanderAcceleration
+            * PerformanceConfig.movingWanderContribution
+            * motionScale
+        acceleration.dx += cosine * wanderStrength
+        acceleration.dy += sine * wanderStrength
+
+        let offset = CGVector(dx: target.x - position.x, dy: target.y - position.y)
+        let distance = length(offset)
+        if distance > 0.001 {
+            let distanceStrength = min(
+                distance / PerformanceConfig.movingLateralFullStrengthDistance,
+                1.0
+            )
+            let lateralStrength =
+                cosine
+                * PerformanceConfig.movingLateralAcceleration
+                * distanceStrength
+                * motionScale
+            acceleration.dx -= offset.dy / distance * lateralStrength
+            acceleration.dy += offset.dx / distance * lateralStrength
+        }
+
+        return acceleration
+    }
+
     private func wanderAcceleration(for fish: Fish, index: Int) -> CGVector {
         let angle = fish.wanderPhase * 1.7 + CGFloat(index) * 0.61
-        let acceleration = isReduceMotionEnabled
-            ? PerformanceConfig.wanderAcceleration
-                * PerformanceConfig.reducedMotionAccelerationScale
-            : PerformanceConfig.wanderAcceleration
+        let acceleration = PerformanceConfig.wanderAcceleration * swarmMotionScale
         return CGVector(
             dx: cos(angle) * acceleration,
             dy: sin(angle * 0.83) * acceleration
         )
+    }
+
+    private var swarmMotionScale: CGFloat {
+        isReduceMotionEnabled
+            ? PerformanceConfig.reducedMotionAccelerationScale
+            : 1.0
     }
 
     private func rebuildSeparationAccelerations(count: Int) {

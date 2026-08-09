@@ -40,6 +40,12 @@ enum PerformanceConfig {
     static let wanderAcceleration: CGFloat = 26.0
     static let wanderPhasePeriod: CGFloat = .pi * 2.0
     static let reducedMotionAccelerationScale: CGFloat = 0.5
+    static let movingWanderContribution: CGFloat = 0.55
+    static let movingLateralAcceleration: CGFloat = 22.0
+    static let movingLateralFullStrengthDistance: CGFloat = 12.0
+    static let movingFollowStrengthVariation: CGFloat = 0.22
+    static let movingFlowPhaseRate: CGFloat = 2.0
+    static let movingFlowIndexPhase: CGFloat = 1.618
     static let separationAcceleration: CGFloat = 130.0
     static let alignmentFactor: CGFloat = 0.025
     static let swarmVelocityDamping: CGFloat = 0.982

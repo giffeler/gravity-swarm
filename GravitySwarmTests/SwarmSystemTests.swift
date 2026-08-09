@@ -61,6 +61,29 @@ struct SwarmSystemTests {
         }
     }
 
+    @Test
+    func movingFollowersKeepPhaseShiftedInternalMotion() {
+        let system = SwarmSystem()
+        let position = CGPoint(x: 80, y: 120)
+        let target = CGPoint(x: 130, y: 120)
+        let first = system.movingFollowAcceleration(
+            for: Fish(position: position, velocity: .zero, wanderPhase: 0),
+            index: 0,
+            from: position,
+            to: target
+        )
+        let second = system.movingFollowAcceleration(
+            for: Fish(position: position, velocity: .zero, wanderPhase: .pi * 0.5),
+            index: 0,
+            from: position,
+            to: target
+        )
+
+        #expect(first.dx > 0)
+        #expect(second.dx > 0)
+        #expect(abs(first.dy - second.dy) > 10)
+    }
+
     private func magnitude(_ vector: CGVector) -> CGFloat {
         sqrt(vector.dx * vector.dx + vector.dy * vector.dy)
     }
